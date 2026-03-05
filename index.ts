@@ -109,7 +109,7 @@ app.all(
           url: '',
           accountType: 'growtopia',
         }),
-      )
+      );
     } catch (error) {
       console.log(`[ERROR]: ${error}`);
       res.status(500).json({
@@ -121,11 +121,11 @@ app.all(
 );
 
 /**
- * @note first checktoken endpoint - redirects using 307 to preserve data
+ * @note first checktoken endpoint - redirects to validate endpoint
  * @param req - express request with refreshToken and clientData
  * @param res - express response with updated token
  */
-app.all('/player/growid/checktoken', async (req: Request, res: Response) => {
+app.all('/player/growid/checktoken', async (_req: Request, res: Response) => {
   return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
@@ -140,40 +140,60 @@ app.all(
     try {
       let refreshToken: string | undefined;
       let clientData: string | undefined;
-
-      // @note get content type
+      let source = 'empty';
       const contentType = req.headers['content-type'] || '';
 
-      // @note handle JSON body (desktop client)
-      if (
-        contentType.includes('application/json') ||
-        (typeof req.body === 'object' &&
-          req.body !== null &&
-          'refreshToken' in req.body)
-      ) {
+      if (typeof req.body === 'object' && req.body !== null) {
         const formData = req.body as Record<string, string>;
-        refreshToken = formData.refreshToken;
-        clientData = formData.clientData;
-        console.log(`[CHECKTOKEN] Parsed as JSON/Object`);
-      }
-      // @note handle form-urlencoded body (from HTML form redirect)
-      else if (
-        typeof req.body === 'object' &&
-        req.body !== null &&
-        Object.keys(req.body).length > 0
-      ) {
-        const formData = req.body as Record<string, string>;
-        refreshToken = formData.refreshToken;
-        clientData = formData.clientData;
-        console.log(`[CHECKTOKEN] Parsed as form-urlencoded`);
-      }
-      // @note handle string body (raw text from mobile)
-      else if (typeof req.body === 'string' && req.body.length > 0) {
+
+        if ('refreshToken' in formData || 'clientData' in formData) {
+          refreshToken = formData.refreshToken;
+          clientData = formData.clientData;
+          source = contentType.includes('application/json')
+            ? 'json/object'
+            : 'form-urlencoded';
+        } else if (Object.keys(formData).length === 1) {
+          const rawPayload = Object.keys(formData)[0];
+          const params = new URLSearchParams(rawPayload);
+          refreshToken = params.get('refreshToken') || undefined;
+          clientData = params.get('clientData') || undefined;
+          if (refreshToken || clientData) {
+            source = 'single-key-form-payload';
+          }
+        }
+      } else if (typeof req.body === 'string' && req.body.length > 0) {
         const params = new URLSearchParams(req.body);
         refreshToken = params.get('refreshToken') || undefined;
         clientData = params.get('clientData') || undefined;
-        console.log(`[CHECKTOKEN] Parsed as string/URLSearchParams`);
+        source = 'string/body-parser';
       }
+
+      if (
+        (!refreshToken || !clientData) &&
+        req.readable &&
+        !req.readableEnded
+      ) {
+        const rawBody = await new Promise<string>((resolve, reject) => {
+          let rawPayload = '';
+
+          req.on('data', (chunk: Buffer | string) => {
+            rawPayload += chunk.toString();
+          });
+          req.on('end', () => resolve(rawPayload));
+          req.on('error', reject);
+        });
+
+        if (rawBody) {
+          const params = new URLSearchParams(rawBody);
+          refreshToken = params.get('refreshToken') || refreshToken;
+          clientData = params.get('clientData') || clientData;
+          if (refreshToken || clientData) {
+            source = 'raw-stream';
+          }
+        }
+      }
+
+      console.log(`[CHECKTOKEN] Parsed as ${source}`);
 
       if (!refreshToken || !clientData) {
         console.log(`[ERROR]: Missing refreshToken or clientData`);
@@ -202,9 +222,14 @@ app.all(
         ),
       ).toString('base64');
 
-      res.send(
-        `{"status":"success","message":"Token is valid.","token":"${token}","url":"","accountType":"growtopia"}`,
-      );
+      res.json({
+        status: 'success',
+        message: 'Account Validated.',
+        token,
+        url: '',
+        accountType: 'growtopia',
+        accountAge: 2,
+      });
     } catch (error) {
       console.log(`[ERROR]: ${error}`);
       res.status(200).json({
