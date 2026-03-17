@@ -7,243 +7,156 @@ import fs from 'fs';
 const app = express();
 const PORT = 3000;
 
-// @note trust proxy - set to number of proxies in front of app
+// ===== CONFIG =====
 app.set('trust proxy', 1);
-
-// @note middleware setup
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// @note rate limiter - 50 requests per minute
 const limiter = rateLimit({
   windowMs: 60_000,
   max: 50,
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { trustProxy: false, xForwardedForHeader: false },
 });
 app.use(limiter);
 
-// @note static files from public folder
 app.use(express.static(path.join(process.cwd(), 'public')));
 
-// @note request logging middleware
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  const clientIp =
-    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-    req.headers['x-real-ip'] ||
-    req.socket.remoteAddress ||
-    'unknown';
+// ===== DATABASE (JSON SIMPLE) =====
+const DB_PATH = path.join(process.cwd(), 'database.json');
 
-  console.log(
-    `[REQ] ${req.method} ${req.path} → ${clientIp} | ${_res.statusCode}`,
-  );
+function loadDB(): any[] {
+  if (!fs.existsSync(DB_PATH)) return [];
+  return JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+}
+
+function saveDB(data: any[]) {
+  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+}
+
+// ===== LOGGING =====
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  const ip =
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+    req.socket.remoteAddress;
+
+  console.log(`[REQ] ${req.method} ${req.path} → ${ip}`);
   next();
 });
 
-// @note root endpoint
-app.get('/', (_req: Request, res: Response) => {
-  res.send('Hello, world!');
-});
-
-/**
- * @note dashboard endpoint - serves login HTML page with client data
- * @param req - express request with optional body data
- * @param res - express response
- */
-app.all('/player/login/dashboard', async (req: Request, res: Response) => {
-  const body = req.body;
+// ===== DASHBOARD =====
+app.all('/player/login/dashboard', (req: Request, res: Response) => {
   let clientData = '';
 
-  // @note body comes as { "key1|val1\nkey2|val2\n...": "" }
-  // @note the actual data is in the first key, pipe-delimited with \n separators
-  if (body && typeof body === 'object' && Object.keys(body).length > 0) {
-    clientData = Object.keys(body)[0];
+  if (req.body && Object.keys(req.body).length > 0) {
+    clientData = Object.keys(req.body)[0];
   }
 
-  // @note convert clientData to base64 string without JSON quotes
-  const encodedClientData = Buffer.from(clientData).toString('base64');
+  const encoded = Buffer.from(clientData).toString('base64');
 
-  // @note read dashboard template and replace placeholder
-  const templatePath = path.join(process.cwd(), 'template', 'dashboard.html');
+  const template = fs.readFileSync(
+    path.join(process.cwd(), 'template', 'dashboard.html'),
+    'utf-8'
+  );
 
-  const templateContent = fs.readFileSync(templatePath, 'utf-8');
-  const htmlContent = templateContent.replace('{{ data }}', encodedClientData);
-
-  res.setHeader('Content-Type', 'text/html');
-  res.send(htmlContent);
+  res.send(template.replace('{{ data }}', encoded));
 });
 
-/**
- * @note validate login endpoint - validates GrowID credentials
- * @param req - express request with growId, password, _token
- * @param res - express response with token
- */
-app.all(
-  '/player/growid/login/validate',
-  async (req: Request, res: Response) => {
-    try {
-      const formData = req.body as Record<string, string>;
-      const _token = formData._token;
-      const growId = formData.growId;
-      const password = formData.password;
-      const email = formData.email;
+// ===== LOGIN / REGISTER =====
+app.all('/player/growid/login/validate', (req: Request, res: Response) => {
+  try {
+    const { _token, growId, password, email } = req.body;
 
-      let token = '';
-      if (email) {
-        token = Buffer.from(
-          `_token=${_token}&growId=${growId}&password=${password}&email=${email}&reg=1`,
-        ).toString('base64');
-      } else {
-        token = Buffer.from(
-          `_token=${_token}&growId=${growId}&password=${password}&reg=0`,
-        ).toString('base64');
+    let db = loadDB();
+
+    // ===== REGISTER =====
+    if (email) {
+      const exists = db.find((u) => u.growId === growId);
+
+      if (exists) {
+        return res.json({
+          status: 'error',
+          message: 'GrowID already exists',
+        });
       }
 
-      res.send(
-        JSON.stringify({
-          status: 'success',
-          message: 'Account Validated.',
-          token,
-          url: '',
-          accountType: 'growtopia',
-        }),
-      );
-    } catch (error) {
-      console.log(`[ERROR]: ${error}`);
-      res.status(500).json({
-        status: 'error',
-        message: 'Internal Server Error',
+      db.push({
+        growId,
+        password,
+        email,
       });
-    }
-  },
-);
 
-/**
- * @note first checktoken endpoint - redirects to validate endpoint
- * @param req - express request with refreshToken and clientData
- * @param res - express response with updated token
- */
-app.all('/player/growid/checktoken', async (_req: Request, res: Response) => {
+      saveDB(db);
+
+      console.log(`[REGISTER] ${growId}`);
+    } else {
+      // ===== LOGIN =====
+      const user = db.find(
+        (u) => u.growId === growId && u.password === password
+      );
+
+      if (!user) {
+        return res.json({
+          status: 'error',
+          message: 'Invalid credentials',
+        });
+      }
+
+      console.log(`[LOGIN] ${growId}`);
+    }
+
+    // ===== TOKEN (SINKRON C++) =====
+    const raw = `_token=${_token}&growId=${growId}&password=${password}`;
+    const token = Buffer.from(raw).toString('base64');
+
+    res.json({
+      status: 'success',
+      message: 'Account Validated',
+      token,
+      accountType: 'growtopia',
+    });
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({
+      status: 'error',
+    });
+  }
+});
+
+// ===== CHECK TOKEN =====
+app.all('/player/growid/checktoken', (_req, res) => {
   return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
-/**
- * @note second checktoken endpoint - validates token and returns updated token
- * @param req - express request with refreshToken and clientData
- * @param res - express response with updated token
- */
-app.all(
-  '/player/growid/validate/checktoken',
-  async (req: Request, res: Response) => {
-    try {
-      let refreshToken: string | undefined;
-      let clientData: string | undefined;
-      let source = 'empty';
-      const contentType = req.headers['content-type'] || '';
+app.all('/player/growid/validate/checktoken', async (req, res) => {
+  try {
+    let { refreshToken, clientData } = req.body;
 
-      if (typeof req.body === 'object' && req.body !== null) {
-        const formData = req.body as Record<string, string>;
-
-        if ('refreshToken' in formData || 'clientData' in formData) {
-          refreshToken = formData.refreshToken;
-          clientData = formData.clientData;
-          source = contentType.includes('application/json')
-            ? 'json/object'
-            : 'form-urlencoded';
-        } else if (Object.keys(formData).length === 1) {
-          const rawPayload = Object.keys(formData)[0];
-          const params = new URLSearchParams(rawPayload);
-          refreshToken = params.get('refreshToken') || undefined;
-          clientData = params.get('clientData') || undefined;
-          if (refreshToken || clientData) {
-            source = 'single-key-form-payload';
-          }
-        }
-      } else if (typeof req.body === 'string' && req.body.length > 0) {
-        const params = new URLSearchParams(req.body);
-        refreshToken = params.get('refreshToken') || undefined;
-        clientData = params.get('clientData') || undefined;
-        source = 'string/body-parser';
-      }
-
-      if (
-        (!refreshToken || !clientData) &&
-        req.readable &&
-        !req.readableEnded
-      ) {
-        const rawBody = await new Promise<string>((resolve, reject) => {
-          let rawPayload = '';
-
-          req.on('data', (chunk: Buffer | string) => {
-            rawPayload += chunk.toString();
-          });
-          req.on('end', () => resolve(rawPayload));
-          req.on('error', reject);
-        });
-
-        if (rawBody) {
-          const params = new URLSearchParams(rawBody);
-          refreshToken = params.get('refreshToken') || refreshToken;
-          clientData = params.get('clientData') || clientData;
-          if (refreshToken || clientData) {
-            source = 'raw-stream';
-          }
-        }
-      }
-
-      console.log(`[CHECKTOKEN] Parsed as ${source}`);
-
-      if (!refreshToken || !clientData) {
-        console.log(`[ERROR]: Missing refreshToken or clientData`);
-        res.status(200).json({
-          status: 'error',
-          message: 'Missing refreshToken or clientData',
-        });
-        return;
-      }
-
-      let decodedRefreshToken = Buffer.from(refreshToken, 'base64').toString(
-        'utf-8',
-      );
-
-      // @note remove &reg=0/1 from decodedRefreshToken if available
-      if (decodedRefreshToken.includes('&reg=0')) {
-        decodedRefreshToken = decodedRefreshToken.replace('&reg=0', '');
-      } else if (decodedRefreshToken.includes('&reg=1')) {
-        decodedRefreshToken = decodedRefreshToken.replace('&reg=1', '');
-      }
-
-      const token = Buffer.from(
-        decodedRefreshToken.replace(
-          /(_token=)[^&]*/,
-          `$1${Buffer.from(clientData).toString('base64')}`,
-        ),
-      ).toString('base64');
-
-      res.send(
-        JSON.stringify({
-          status: 'success',
-          message: 'Account Validated.',
-          token,
-          url: '',
-          accountType: 'growtopia',
-          accountAge: 2,
-        }),
-      );
-    } catch (error) {
-      console.log(`[ERROR]: ${error}`);
-      res.status(200).json({
+    if (!refreshToken || !clientData) {
+      return res.json({
         status: 'error',
-        message: 'Internal Server Error',
+        message: 'Missing token',
       });
     }
-  },
-);
 
-app.listen(PORT, () => {
-  console.log(`[SERVER] Running on http://localhost:${PORT}`);
+    let decoded = Buffer.from(refreshToken, 'base64').toString();
+
+    const newToken = Buffer.from(
+      decoded.replace(
+        /(_token=)[^&]*/,
+        `$1${Buffer.from(clientData).toString('base64')}`
+      )
+    ).toString('base64');
+
+    res.json({
+      status: 'success',
+      token: newToken,
+      accountType: 'growtopia',
+    });
+  } catch {
+    res.json({ status: 'error' });
+  }
 });
 
-export default app;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
