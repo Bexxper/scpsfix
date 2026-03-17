@@ -94,18 +94,18 @@ app.get('/register', (_req, res) => {
 
 // ================= REGISTER =================
 app.post('/player/growid/register', (req: Request, res: Response) => {
-  const { growId, password } = req.body;
+  let { growId, password, _token } = req.body;
 
-  if (!growId || !password) {
-    return res.json({
-      status: 'error',
-      message: 'Missing credentials',
-    });
-  }
+  if (!growId) growId = 'guest';
+  if (!password) password = 'guest';
+
+  const raw = `_token=${_token}&growId=${growId}&password=${password}`;
+  const token = Buffer.from(raw).toString('base64');
 
   res.json({
     status: 'success',
-    message: 'Account Registered',
+    message: 'Register success',
+    token,
   });
 });
 
