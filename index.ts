@@ -21,12 +21,21 @@ app.use(limiter);
 
 app.use(express.static(path.join(process.cwd(), 'public')));
 
-// ===== DATABASE (JSON SIMPLE) =====
+// ===== DATABASE JSON =====
 const DB_PATH = path.join(process.cwd(), 'database.json');
 
+// auto create file kalau belum ada
+if (!fs.existsSync(DB_PATH)) {
+  fs.writeFileSync(DB_PATH, '[]');
+}
+
 function loadDB(): any[] {
-  if (!fs.existsSync(DB_PATH)) return [];
-  return JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+  try {
+    const data = fs.readFileSync(DB_PATH, 'utf-8');
+    return JSON.parse(data || '[]');
+  } catch {
+    return [];
+  }
 }
 
 function saveDB(data: any[]) {
@@ -86,7 +95,6 @@ app.all('/player/growid/login/validate', (req: Request, res: Response) => {
       });
 
       saveDB(db);
-
       console.log(`[REGISTER] ${growId}`);
     } else {
       // ===== LOGIN =====
@@ -116,9 +124,7 @@ app.all('/player/growid/login/validate', (req: Request, res: Response) => {
     });
   } catch (e) {
     console.log(e);
-    res.status(500).json({
-      status: 'error',
-    });
+    res.status(500).json({ status: 'error' });
   }
 });
 
@@ -127,9 +133,9 @@ app.all('/player/growid/checktoken', (_req, res) => {
   return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
-app.all('/player/growid/validate/checktoken', async (req, res) => {
+app.all('/player/growid/validate/checktoken', (req, res) => {
   try {
-    let { refreshToken, clientData } = req.body;
+    const { refreshToken, clientData } = req.body;
 
     if (!refreshToken || !clientData) {
       return res.json({
