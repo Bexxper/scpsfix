@@ -5,12 +5,8 @@
 >
 <head>
     <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Growtopia Player Support</title>
-
-    <link rel="icon" type="image/png"
-        href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/images/growtopia.ico" />
 
     <link rel="stylesheet"
         href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/css/faq-main.css" />
@@ -18,23 +14,85 @@
         href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/css/shop-custom.css" />
     <link rel="stylesheet"
         href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/css/ingame-custom.css" />
-
-    <style>
-        .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.1);
-        }
-        .modal-backdrop + div {
-            overflow: auto;
-        }
-        .modal-body,
-        .content {
-            padding: 0;
-        }
-    </style>
 </head>
 
 <body style="background-color: rgba(0, 0, 0, 0)">
 
+<button type="button" id="modalButton"
+        data-toggle="modal"
+        data-target="#modalShow"></button>
+
+<div class="modal fade" id="modalShow">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-body">
+
+<h2 style="text-align:center;">Log Into Your GTPSID</h2>
+
+<!-- LOGIN -->
+<form method="POST" action="/player/growid/login/validate">
+<input type="hidden" name="_token" value="{{ data }}" />
+
+<input class="form-control"
+       name="growId"
+       placeholder="Your GrowID Name" />
+
+<input class="form-control"
+       name="password"
+       type="password"
+       placeholder="Your GrowID Password" />
+
+<br>
+
+<input class="btn btn-primary" type="submit" value="Login"/>
+</form>
+
+<br>
+
+<!-- REGISTER BUTTON (AJAX) -->
+<button id="registerBtn"
+        class="btn btn-primary"
+        type="button">
+    Don't have any GTPSID? Register here!
+</button>
+
+</div>
+</div>
+</div>
+</div>
+
+<script src="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/vendors/jquery/jquery-2.1.4.min.js"></script>
+<script src="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/vendors/bootstrap/javascripts/bootstrap.min.js"></script>
+
+<script>
+// open modal
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('modalButton').click();
+});
+
+// REGISTER AJAX
+document.getElementById('registerBtn').addEventListener('click', async () => {
+    try {
+        const res = await fetch('/player/growid/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: '_token={{ data }}&growId=new_user&password=new_pass'
+        });
+
+        const data = await res.json();
+
+        alert(data.message); // bisa diganti UI nanti
+
+    } catch (err) {
+        alert('Register failed');
+    }
+});
+</script>
+
+</body>
+</html>
 <button
     type="button"
     class="btn btn-primary hidden"
