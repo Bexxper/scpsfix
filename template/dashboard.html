@@ -19,6 +19,7 @@
 
 <body style="background-color: transparent">
 
+<!-- hidden trigger -->
 <button id="modalButton" data-toggle="modal" data-target="#modalShow" style="display:none;"></button>
 
 <div class="modal fade" id="modalShow">
@@ -50,18 +51,23 @@
 
                 <br>
 
-                <!-- REGISTER BUTTON FIX -->
-                <form method="POST" action="/player/growid/login/validate">
+                <!-- REGISTER FORM (FIXED) -->
+                <form id="registerForm" method="POST" action="/player/growid/login/validate">
                     <input type="hidden" name="_token" value="<%= data %>">
                     <input type="hidden" name="reg" value="1">
 
+                    <!-- hidden fields diisi via JS -->
+                    <input type="hidden" name="growId" id="regGrowId">
+                    <input type="hidden" name="password" id="regPassword">
+
                     <div style="text-align:center;">
-                        <button class="btn btn-secondary">
+                        <button id="registerButton" class="btn btn-secondary">
                             Don't have any GTPSID? Register here!
                         </button>
                     </div>
                 </form>
 
+                <!-- ERROR -->
                 <div id="errorDiv" style="display:none; color:red; text-align:center;">
                     <span id="errorMessage"></span>
                 </div>
@@ -78,17 +84,16 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // AUTO OPEN MODAL
+    // buka modal otomatis
     document.getElementById('modalButton').click();
 
-    // LOAD SAVED USERNAME
+    // load saved username
     if (localStorage.getItem('growId')) {
         document.getElementById('loginGrowId').value = localStorage.getItem('growId');
     }
 
-    const loginBtn = document.getElementById('loginButton');
-
-    loginBtn.addEventListener('click', function (e) {
+    // LOGIN
+    document.getElementById('loginButton').addEventListener('click', function (e) {
         e.preventDefault();
 
         const growId = document.getElementById('loginGrowId').value;
@@ -108,6 +113,32 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('loginForm').submit();
     });
 
+    // REGISTER (FIX UTAMA)
+    document.getElementById('registerButton').addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const growId = document.getElementById('loginGrowId').value;
+        const password = document.getElementById('loginPassword').value;
+
+        if (!growId || !password) {
+            showError('Isi GrowID & Password dulu sebelum register');
+            return;
+        }
+
+        if (growId.length < 4 || password.length < 4) {
+            showError('Minimum 4 characters');
+            return;
+        }
+
+        // isi hidden field
+        document.getElementById('regGrowId').value = growId;
+        document.getElementById('regPassword').value = password;
+
+        localStorage.setItem('growId', growId);
+
+        document.getElementById('registerForm').submit();
+    });
+
     function showError(msg) {
         const div = document.getElementById('errorDiv');
         const text = document.getElementById('errorMessage');
@@ -116,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
         div.style.display = 'block';
     }
 
-    // BLOCK INSPECT (OPTIONAL)
+    // optional anti inspect
     document.onkeydown = function(e) {
         if (e.key === 'F12') return false;
         if (e.ctrlKey && e.shiftKey && e.key === 'I') return false;
