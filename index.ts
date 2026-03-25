@@ -15,9 +15,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
+// ================= RATE LIMIT =================
 const limiter = rateLimit({
   windowMs: 60_000,
   max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
@@ -37,7 +40,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // ================= ROOT =================
 app.get('/', (_req: Request, res: Response) => {
-  res.send('Login Server Running');
+  res.send('Hello, world!');
 });
 
 // ================= DASHBOARD =================
@@ -63,15 +66,11 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
 // ================= LOGIN VALIDATE =================
 app.all('/player/growid/login/validate', async (req: Request, res: Response) => {
   try {
-    const body = req.body;
+    let { _token, growId, password, email } = req.body;
 
-    let growId = body.growId || body.growid || '';
-    let password = body.password || '';
-    let _token = body._token || body.token || '';
-
-    // fallback parsing (Windows raw payload)
-    if (!growId && Object.keys(body).length === 1) {
-      const raw = Object.keys(body)[0];
+    // ===== fallback parsing (Windows client) =====
+    if ((!growId || !password) && Object.keys(req.body).length === 1) {
+      const raw = Object.keys(req.body)[0];
       const params = new URLSearchParams(raw);
 
       growId = params.get('growId') || '';
@@ -79,27 +78,27 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
       _token = params.get('_token') || '';
     }
 
-    // generate token ALWAYS
-    const rawToken = `_token=${_token}&growId=${growId}&password=${password}`;
-    const token = Buffer.from(rawToken).toString('base64');
+    // ===== DETECT REGISTER =====
+    const isRegister = !growId && !password;
 
-    // ================= REGISTER MODE =================
-    if (!growId && !password) {
-      return res.json({
-        status: 'success',
-        message: 'Register Mode',
-        token,
-        url: '', // penting: kosong untuk Windows
-        accountType: 'growtopia',
-      });
+    let raw: string;
+
+    if (isRegister) {
+      const guestId = `guest_${Date.now()}`;
+      raw = `_token=guest&growId=${guestId}&password=guest`;
+      console.log('[REGISTER BYPASS]');
+    } else {
+      raw = `_token=${_token || ''}&growId=${growId}&password=${password}`;
+      if (email) raw += `&email=${email}`;
     }
 
-    // ================= LOGIN VALID =================
+    const token = Buffer.from(raw).toString('base64');
+
     return res.json({
       status: 'success',
-      message: 'Account Validated.',
+      message: isRegister ? 'Register Mode' : 'Account Validated.',
       token,
-      url: '', // kosongkan untuk hindari flow checktoken Windows
+      url: '', // penting untuk Windows
       accountType: 'growtopia',
     });
 
@@ -112,28 +111,33 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
   }
 });
 
-// ================= CHECKTOKEN =================
-// hanya dipakai iOS, Windows tidak butuh
-app.all('/player/growid/checktoken', async (req: Request, res: Response) => {
+// ================= CHECKTOKEN REDIRECT =================
+app.all('/player/growid/checktoken', async (_req: Request, res: Response) => {
   return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
+// ================= CHECKTOKEN VALIDATE =================
 app.all('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
   try {
-    let refreshToken = req.body.refreshToken;
+    let refreshToken: string | undefined;
 
-    // fallback parsing
-    if (!refreshToken && Object.keys(req.body).length === 1) {
-      const raw = Object.keys(req.body)[0];
-      const params = new URLSearchParams(raw);
-      refreshToken = params.get('refreshToken') || '';
+    if (typeof req.body === 'object' && req.body !== null) {
+      const formData = req.body as Record<string, string>;
+
+      if ('refreshToken' in formData) {
+        refreshToken = formData.refreshToken;
+      } else if (Object.keys(formData).length === 1) {
+        const rawPayload = Object.keys(formData)[0];
+        const params = new URLSearchParams(rawPayload);
+        refreshToken = params.get('refreshToken') || undefined;
+      }
     }
 
+    // ===== fallback supaya Windows gak error =====
     if (!refreshToken) {
-      // fallback supaya Windows gak error
       return res.json({
         status: 'success',
-        message: 'Bypassed',
+        message: 'Bypass',
         token: '',
         url: '',
         accountType: 'growtopia',
