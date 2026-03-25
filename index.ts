@@ -15,7 +15,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// ================= RATE LIMIT =================
 const limiter = rateLimit({
   windowMs: 60_000,
   max: 50,
@@ -40,7 +39,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // ================= ROOT =================
 app.get('/', (_req: Request, res: Response) => {
-  res.send('Hello, world!');
+  res.send('Login Server Running');
 });
 
 // ================= DASHBOARD =================
@@ -66,47 +65,44 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
 // ================= LOGIN VALIDATE =================
 app.all('/player/growid/login/validate', async (req: Request, res: Response) => {
   try {
-    let { _token, growId, password, email } = req.body;
+    const { _token, growId, password, email } = req.body;
 
-    // fallback parsing (Windows)
-    if ((!growId || !password) && Object.keys(req.body).length === 1) {
-      const rawBody = Object.keys(req.body)[0];
-      const params = new URLSearchParams(rawBody);
+    // ================= REGISTER BUTTON (EMPTY) =================
+    // kalau kosong → tetap kirim token kosong biar C++ handle register
+    if (!growId && !password) {
+      const raw = `_token=${_token || ''}&growId=&password=`;
+      const token = Buffer.from(raw).toString('base64');
 
-      growId = params.get('growId') || '';
-      password = params.get('password') || '';
-      _token = params.get('_token') || '';
+      return res.send(JSON.stringify({
+        status: 'success',
+        message: 'Register Mode',
+        token,
+        url: '',
+        accountType: 'growtopia',
+      }));
     }
 
-    const isRegister = !growId && !password;
-
-    // 🔥 FIX: token wajib ada
-    const safeToken =
-      _token && _token !== ''
-        ? _token
-        : Math.random().toString(36).substring(2, 12);
-
-    let raw: string;
-
-    if (isRegister) {
-      const guestId = `guest_${Date.now()}`;
-      raw = `_token=${safeToken}&growId=${guestId}&password=guest`;
-      console.log('[REGISTER FIXED]');
-    } else {
-      raw = `_token=${safeToken}&growId=${growId}&password=${password}`;
-      if (email) raw += `&email=${email}`;
+    // ================= VALIDASI LOGIN =================
+    if (!growId || !password) {
+      return res.json({
+        status: 'error',
+        message: 'growId and password required',
+      });
     }
+
+    // ================= NORMAL LOGIN =================
+    let raw = `_token=${_token}&growId=${growId}&password=${password}`;
+    if (email) raw += `&email=${email}`;
 
     const token = Buffer.from(raw).toString('base64');
 
-    return res.json({
+    res.send(JSON.stringify({
       status: 'success',
-      message: isRegister ? 'Register Mode' : 'Account Validated.',
+      message: 'Account Validated.',
       token,
       url: '',
       accountType: 'growtopia',
-    });
-
+    }));
   } catch (error) {
     console.log(`[ERROR]: ${error}`);
     res.status(500).json({
@@ -138,29 +134,25 @@ app.all('/player/growid/validate/checktoken', async (req: Request, res: Response
       }
     }
 
-    // ===== fallback supaya Windows gak error =====
     if (!refreshToken) {
       return res.json({
-        status: 'success',
-        message: 'Bypass',
-        token: '',
-        url: '',
-        accountType: 'growtopia',
+        status: 'error',
+        message: 'Missing refreshToken',
       });
     }
 
+    // decode & encode ulang (no modification)
     const decoded = Buffer.from(refreshToken, 'base64').toString('utf-8');
     const token = Buffer.from(decoded).toString('base64');
 
-    return res.json({
+    res.send(JSON.stringify({
       status: 'success',
       message: 'Account Validated.',
       token,
       url: '',
       accountType: 'growtopia',
       accountAge: 2,
-    });
-
+    }));
   } catch (error) {
     console.log(`[ERROR]: ${error}`);
     res.json({
