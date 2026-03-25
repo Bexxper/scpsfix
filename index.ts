@@ -83,6 +83,11 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
       }
     }
 
+    // 🔥 FIX UTAMA: generate token kalau kosong
+    if (!_token || _token === 'undefined') {
+      _token = Math.random().toString(36).substring(2, 15);
+    }
+
     if (!growId && !password) {
       const raw = `_token=${_token}&growId=&password=`;
       const token = Buffer.from(raw).toString('base64');
