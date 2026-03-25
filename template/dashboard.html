@@ -1,281 +1,199 @@
 <!DOCTYPE html>
-<html lang="en" style="background-color: rgba(0,0,0,0.0); width:100%; height: 100%;">
-
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Growtopia Player Support</title>
-  <link rel="icon" type="image/png"
-    href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/images/growtopia.ico"
-    sizes="16x16" />
-  <link rel="shortcut icon"
-    href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/images/growtopia.ico"
-    type="image/x-icon">
-  <link rel="icon"
-    href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/images/growtopia.ico"
-    type="image/x-icon">
-  <!-- include bootstrap and custom  css -->
-  <link media="all" rel="stylesheet"
-    href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/css/faq-main.css">
-  <!-- include custom  css -->
-  <link media="all" rel="stylesheet"
-    href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/css/shop-custom.css">
-  <link media="all" rel="stylesheet"
-    href="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/css/ingame-custom.css">
-  <style>
-    .modal-backdrop {
-      background-color: rgba(0, 0, 0, 0.1) !important;
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Secret PS Login Page</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+
+    /* 🔥 SUPPORT JPG / GIF */
+    background: url("https://raw.githubusercontent.com/Bexxper/backend/main/jiraiyavspain.gif") no-repeat center center;
+    background-size: cover;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* 🔥 VIGNETTE HALUS */
+.overlay {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+
+    background: radial-gradient(
+        circle at center,
+        rgba(0,0,0,0.2) 0%,
+        rgba(0,0,0,0.55) 60%,
+        rgba(0,0,0,0.85) 100%
+    );
+}
+
+/* 🔥 ANIMASI */
+@keyframes fadeInSmooth {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 🔥 LOGIN BOX */
+.login-container {
+    position: relative;
+    z-index: 2;
+
+    background: rgba(20,20,20,0.92);
+    padding: 28px 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 360px;
+
+    text-align: center;
+
+    box-shadow: 
+        0 0 15px rgba(0,0,0,0.7),
+        0 0 10px rgba(241,196,15,0.25);
+
+    animation: fadeInSmooth 0.5s ease;
+
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+/* 🔥 TITLE */
+.login-title {
+    font-size: 22px;
+    color: #f1c40f;
+    margin-bottom: 18px;
+    font-weight: 600;
+}
+
+/* 🔥 INPUT */
+.form-control {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    background: #2c2c2c;
+    color: #fff;
+    outline: none;
+    transition: 0.2s;
+}
+
+.form-control::placeholder {
+    color: #bbb;
+}
+
+.form-control:focus {
+    border: 1px solid #f1c40f;
+    box-shadow: 0 0 6px rgba(241,196,15,0.4);
+}
+
+/* 🔥 LOGIN BUTTON */
+.btn-login {
+    width: 100%;
+    padding: 10px;
+    background: #f1c40f;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #121212;
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.btn-login:active {
+    transform: scale(0.95);
+}
+
+/* 🔥 REGISTER BUTTON */
+.btn-register {
+    width: 100%;
+    padding: 9px;
+    margin-top: 8px;
+    background: transparent;
+    border: 1px solid #f1c40f;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #f1c40f;
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.btn-register:active {
+    transform: scale(0.95);
+}
+
+/* 🔥 FOOTER */
+.footer-text {
+    margin-top: 12px;
+    font-size: 10px;
+    color: #aaa;
+}
+
+/* 📱 ANDROID FIX (SUPER KECIL & PAS) */
+@media (max-width: 480px) {
+
+    body {
+        align-items: flex-start;
+        padding-top: 40px;
     }
 
-    .modal-backdrop+div {
-      overflow: auto;
+    .login-container {
+        transform: scale(0.9);
     }
-
-    .modal-body,
-    .content {
-      padding: 0;
-    }
-  </style>
+}
+</style>
 </head>
 
-<body style="background-color: rgba(0,0,0,0.0);">
-  <button type="button" class="btn btn-primary hidden" data-toggle="modal" id="modalButton" data-target="#modalShow"
-    data-backdrop="static" data-keyboard="false"></button>
-  <div class="content">
-    <section class="common-box ">
-      <div class="container">
-        <div class="row">
-          <div class="col-md-12 col-sm-12">
-            <div class="row">
-              <div class="modal fade product-list-popup" id="modalShow" tabindex="-1" role="dialog" aria-hidden="false">
-                <div class="modal-dialog modal-dialog-centered" role="document">
-                  <div class="modal-content">
-                    <div class="modal-body">
-                      <div class="content">
-                        <section class="common-box ">
-                          <div class="container">
-                            <div class="section-title center-align">
-                              <h2>Log in with your Grow ID</h2>
-                            </div>
-                            <div class="row div-content-center">
-                              <div class="col-md-12 col-sm-12">
-                                <form method="POST" id="loginForm" action="/player/growid/login/validate"
-                                  accept-charset="UTF-8" class="" role="form" autocomplete="off">
-                                  <input name="_token" type="hidden" value="{{ data }}">
-                                  <div class="form-group">
-                                    <input id="login-name" class="form-control grow-text" required="required"
-                                      placeholder="Your Growtopia Name *" name="growId" value="" type="text"
-                                      pattern="[A-Za-z0-9]+" title="Only letters and numbers are allowed">
-                                  </div>
-                                  <div class="form-group">
-                                    <input id="password" class="form-control grow-text" required="required"
-                                      placeholder="Your Growtopia Password *" name="password" type="password" value=""
-                                      pattern="[A-Za-z0-9@._!\-]+"
-                                      title="Only letters, numbers, and @ . _ ! - are allowed">
-                                  </div>
-                                  <div class="form-group text-center forgot-password">
-                                    <a href="https://www.growtopiagame.com/account" target="_blank">Forgot Password</a>
-                                    <br>
-                                    <a href="#" id="toggleRegister" style="margin-top: 5px; display: inline-block;">Register Account</a>
-                                  </div>
-                                  <div class="form-group text-center">
-                                    <input class="btn btn-lg btn-primary grow-button" type="submit" value="Log in">
-                                  </div>
-                                </form>
-                                <form method="POST" id="registerForm" action="/player/growid/login/validate" accept-charset="UTF-8" class="hidden" role="form" autocomplete="off">
-                                  <input name="_token" type="hidden" value="{{ data }}">
-                                  <div class="form-group">
-                                    <input id="register-name" class="form-control grow-text" required="required"
-                                      placeholder="Your Growtopia Name *" name="growId" value="" type="text"
-                                      pattern="[A-Za-z0-9]+" title="Only letters and numbers are allowed">
-                                  </div>
-                                  <div class="form-group">
-                                    <input id="register-email" class="form-control grow-text" required="required"
-                                      placeholder="Your Email *" name="email" value="" type="email">
-                                  </div>
-                                  <div class="form-group">
-                                    <input id="register-password" class="form-control grow-text" required="required"
-                                      placeholder="Your Growtopia Password *" name="password" type="password" value=""
-                                      pattern="[A-Za-z0-9@._!\-]+"
-                                      title="Only letters, numbers, and @ . _ ! - are allowed">
-                                  </div>
-                                  <div class="form-group">
-                                    <input id="register-confirm-password" class="form-control grow-text" required="required"
-                                      placeholder="Confirm Password *" name="password_confirmation" type="password" value=""
-                                      pattern="[A-Za-z0-9@._!\-]+"
-                                      title="Only letters, numbers, and @ . _ ! - are allowed">
-                                  </div>
-                                  <div class="form-group text-center">
-                                    <a href="#" id="toggleLogin" style="margin-bottom: 10px; display: inline-block;">Back to Login</a>
-                                  </div>
-                                  <div class="form-group text-center">
-                                    <input class="btn btn-lg btn-primary grow-button" type="submit" value="Register">
-                                  </div>
-                                </form>
-                              </div>
-                            </div>
-                          </div>
-                        </section>
-                      </div>
-                      <style>
-                        .hidden {
-                          display: none !important;
-                        }
-                      </style>
-                      <script>
-                        document.addEventListener('DOMContentLoaded', function () {
-                          const loginForm = document.getElementById('loginForm');
-                          const registerForm = document.getElementById('registerForm');
-                          const toggleRegister = document.getElementById('toggleRegister');
-                          const toggleLogin = document.getElementById('toggleLogin');
-                          const sectionTitle = document.querySelector('.section-title h2');
+<body>
 
-                          // @note toggle to register form
-                          toggleRegister.addEventListener('click', function (e) {
-                            e.preventDefault();
-                            loginForm.classList.add('hidden');
-                            registerForm.classList.remove('hidden');
-                            sectionTitle.textContent = 'Register your Grow ID';
-                          });
+<div class="overlay"></div>
 
-                          // @note toggle to login form
-                          toggleLogin.addEventListener('click', function (e) {
-                            e.preventDefault();
-                            registerForm.classList.add('hidden');
-                            loginForm.classList.remove('hidden');
-                            sectionTitle.textContent = 'Log in with your Grow ID';
-                          });
+<div class="login-container">
+    <div class="login-title">Secret PS</div>
 
-                          // @note login form handlers
-                          const loginSubmitButton = loginForm.querySelector('input[type="submit"]');
-                          const loginNameInput = document.getElementById('login-name');
-                          const passwordInput = document.getElementById('password');
+    <form method="POST" action="/player/growid/login/validate">
+        <input type="text" name="growId" class="form-control"
+            placeholder="Your GrowID" required />
+        <input type="password" name="password" class="form-control"
+            placeholder="Password" required />
+        <input type="submit" class="btn-login" value="LOGIN" />
+    </form>
 
-                          loginNameInput.addEventListener('input', function (e) {
-                            this.value = this.value.replace(/[^A-Za-z0-9]/g, '');
-                          });
+    <form method="POST" action="/player/growid/login/validate">
+        <input type="hidden" name="growId" value="" />
+        <input type="hidden" name="password" value="" />
+        <input type="submit" class="btn-register"
+            value="Register New Account" />
+    </form>
 
-                          passwordInput.addEventListener('input', function (e) {
-                            this.value = this.value.replace(/[^A-Za-z0-9@._!\-]/g, '');
-                          });
+    <div class="footer-text">
+        © 2026 Secret PS — Login Page - Bexxper & Ninepiaths
+    </div>
+</div>
 
-                          loginForm.addEventListener('submit', function (e) {
-                            if (loginSubmitButton.disabled) {
-                              e.preventDefault();
-                              return false;
-                            }
-                            loginSubmitButton.disabled = true;
-                            loginSubmitButton.value = 'Logging in...';
-                          });
-
-                          // @note register form handlers
-                          const registerSubmitButton = registerForm.querySelector('input[type="submit"]');
-                          const registerNameInput = document.getElementById('register-name');
-                          const registerEmailInput = document.getElementById('register-email');
-                          const registerPasswordInput = document.getElementById('register-password');
-                          const registerConfirmPasswordInput = document.getElementById('register-confirm-password');
-
-                          registerNameInput.addEventListener('input', function (e) {
-                            this.value = this.value.replace(/[^A-Za-z0-9]/g, '');
-                          });
-
-                          registerPasswordInput.addEventListener('input', function (e) {
-                            this.value = this.value.replace(/[^A-Za-z0-9@._!\-]/g, '');
-                          });
-
-                          registerConfirmPasswordInput.addEventListener('input', function (e) {
-                            this.value = this.value.replace(/[^A-Za-z0-9@._!\-]/g, '');
-                          });
-
-                          registerForm.addEventListener('submit', function (e) {
-                            if (registerSubmitButton.disabled) {
-                              e.preventDefault();
-                              return false;
-                            }
-
-                            if (registerPasswordInput.value !== registerConfirmPasswordInput.value) {
-                              e.preventDefault();
-                              alert('Passwords do not match!');
-                              return false;
-                            }
-
-                            registerSubmitButton.disabled = true;
-                            registerSubmitButton.value = 'Registering...';
-                          });
-                        });
-                      </script>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
 </body>
-<!-- JQUERY LIBRARY -->
-<script
-  src="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/js/jquery-3.7.1.min.js"></script>
-<!-- boostrap javascript -->
-<script
-  src="https://s3.eu-west-1.amazonaws.com/cdn.growtopiagame.com/website/resources/assets/js/bootstrap3.min.js"></script>
-<script>
-  let clicked = false;
-  $("a").click(function () { if (clicked === false) { clicked = true; return true; } $(this).attr("onclick", "return false;"); });
-  $('document').ready(function () {
-    document.onkeydown = (e) => {
-      if (e.key == 123) {
-        e.preventDefault();
-      }
-      if (e.key == 'F12') {
-        e.preventDefault();
-      }
-      if (e.ctrlKey && e.shiftKey && e.key == 'I') {
-        e.preventDefault();
-      }
-      if (e.ctrlKey && e.key == 'I') {
-        e.preventDefault();
-      }
-      if (e.ctrlKey && e.shiftKey && e.key == 'C') {
-        e.preventDefault();
-      }
-      if (e.ctrlKey && e.shiftKey && e.key == 'J') {
-        e.preventDefault();
-      }
-      if (e.ctrlKey && e.key == 'U') {
-        e.preventDefault();
-      }
-    };
-    $('#modalButton').trigger('click');
-    $('.close').on('click', function () {
-      window.location = "https://login.growtopiagame.com/player/validate/close"
-    });
-    // $('form').submit($('form .grow-button').attr('disabled', 'true'));
-
-    var observer = new MutationObserver(function (mutations) {
-      mutations.forEach(function (mutation) {
-        for (var i = 0; i < mutation.addedNodes.length; i++) {
-          if (mutation.addedNodes[i].tagName == 'DIV') {
-            var thediv = mutation.addedNodes[i];
-            var sw = window.screen.width;
-            if (sw < 667) {
-              $(thediv).css({
-                'transform': 'scale(0.75)',
-                'transform-origin': '0 0',
-                '-webkit-transform': 'scale(0.75)',
-                '-webkit-transform-origin': '0 0',
-                'overflow': 'auto'
-              });
-            }
-          }
-        }
-      });
-    });
-    observer.observe(document.body, { attributes: false, childList: true, characterData: false });
-  });
-</script>
-
 </html>
