@@ -16,7 +16,7 @@ app.use(cors());
 
 const limiter = rateLimit({
   windowMs: 60_000,
-  max: 150,
+  max: 50,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -59,24 +59,32 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
 
 app.all('/player/growid/login/validate', async (req: Request, res: Response) => {
   try {
-    let { _token, growId, password, email } = req.body;
+    let growId = '';
+    let password = '';
+    let _token = '';
+    let email = '';
 
-    if ((!growId || !password) && Object.keys(req.body).length === 1) {
-      const raw = Object.keys(req.body)[0];
-      const params = new URLSearchParams(raw);
+    if (typeof req.body === 'object' && req.body !== null) {
+      const body = req.body as Record<string, string>;
 
-      _token = params.get('_token') || '';
-      growId = params.get('growId') || '';
-      password = params.get('password') || '';
-      email = params.get('email') || undefined;
+      if (body.growId || body.password) {
+        growId = body.growId || '';
+        password = body.password || '';
+        _token = body._token || '';
+        email = body.email || '';
+      } else if (Object.keys(body).length === 1) {
+        const rawPayload = Object.keys(body)[0];
+        const params = new URLSearchParams(rawPayload);
+
+        growId = params.get('growId') || '';
+        password = params.get('password') || '';
+        _token = params.get('_token') || '';
+        email = params.get('email') || '';
+      }
     }
 
-    const safeToken = _token || '';
-    const safeGrowId = growId || '';
-    const safePassword = password || '';
-
-    if (!safeGrowId && !safePassword) {
-      const raw = `_token=&growId=&password=`;
+    if (!growId && !password) {
+      const raw = `_token=${_token}&growId=&password=`;
       const token = Buffer.from(raw).toString('base64');
 
       return res.json({
@@ -88,19 +96,15 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
       });
     }
 
-    if (!safeGrowId || !safePassword) {
+    if (!growId || !password) {
       return res.json({
         status: 'error',
         message: 'growId and password required',
       });
     }
 
-    let raw = `_token=${safeToken}&growId=${safeGrowId}&password=${safePassword}`;
+    let raw = `_token=${_token}&growId=${growId}&password=${password}`;
     if (email) raw += `&email=${email}`;
-
-    raw = raw.trim();
-
-    console.log('RAW LOGIN:', raw);
 
     const token = Buffer.from(raw).toString('base64');
 
@@ -111,37 +115,34 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
       url: '',
       accountType: 'growtopia',
     });
+
   } catch (error) {
     console.log(`[ERROR]: ${error}`);
-    res.status(500).json({
+    return res.status(500).json({
       status: 'error',
       message: 'Internal Server Error',
     });
   }
 });
 
-app.all('/player/growid/checktoken', async (req: Request, res: Response) => {
+app.all('/player/growid/checktoken', async (_req: Request, res: Response) => {
+  return res.redirect(307, '/player/growid/validate/checktoken');
+});
+
+app.all('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
   try {
-    let refreshToken: string | undefined;
+    let refreshToken = '';
 
-    if (req.body && typeof req.body === 'object') {
-      const formData = req.body as Record<string, string>;
+    if (typeof req.body === 'object' && req.body !== null) {
+      const body = req.body as Record<string, string>;
 
-      if ('refreshToken' in formData) {
-        refreshToken = formData.refreshToken;
-      } else if (Object.keys(formData).length === 1) {
-        const rawPayload = Object.keys(formData)[0];
+      if (body.refreshToken) {
+        refreshToken = body.refreshToken;
+      } else if (Object.keys(body).length === 1) {
+        const rawPayload = Object.keys(body)[0];
         const params = new URLSearchParams(rawPayload);
-        refreshToken = params.get('refreshToken') || undefined;
+        refreshToken = params.get('refreshToken') || '';
       }
-    }
-
-    if (!refreshToken && typeof req.query.refreshToken === 'string') {
-      refreshToken = req.query.refreshToken;
-    }
-
-    if (!refreshToken && typeof req.headers['refreshtoken'] === 'string') {
-      refreshToken = req.headers['refreshtoken'];
     }
 
     if (!refreshToken) {
@@ -162,9 +163,10 @@ app.all('/player/growid/checktoken', async (req: Request, res: Response) => {
       accountType: 'growtopia',
       accountAge: 2,
     });
+
   } catch (error) {
     console.log(`[ERROR]: ${error}`);
-    res.json({
+    return res.json({
       status: 'error',
       message: 'Internal Server Error',
     });
