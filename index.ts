@@ -71,8 +71,12 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
       email = params.get('email') || undefined;
     }
 
-    if (!growId && !password) {
-      const raw = `_token=${_token || ''}&growId=&password=`;
+    const safeToken = _token || '';
+    const safeGrowId = growId || '';
+    const safePassword = password || '';
+
+    if (!safeGrowId && !safePassword) {
+      const raw = `_token=&growId=&password=`;
       const token = Buffer.from(raw).toString('base64');
 
       return res.json({
@@ -84,15 +88,19 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
       });
     }
 
-    if (!growId || !password) {
+    if (!safeGrowId || !safePassword) {
       return res.json({
         status: 'error',
         message: 'growId and password required',
       });
     }
 
-    let raw = `_token=${_token}&growId=${growId}&password=${password}`;
+    let raw = `_token=${safeToken}&growId=${safeGrowId}&password=${safePassword}`;
     if (email) raw += `&email=${email}`;
+
+    raw = raw.trim();
+
+    console.log('RAW LOGIN:', raw);
 
     const token = Buffer.from(raw).toString('base64');
 
@@ -156,7 +164,7 @@ app.all('/player/growid/checktoken', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.log(`[ERROR]: ${error}`);
-    return res.json({
+    res.json({
       status: 'error',
       message: 'Internal Server Error',
     });
