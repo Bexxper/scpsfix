@@ -6,7 +6,7 @@ import fs from 'fs';
 
 const app = express();
 const PORT = 3000;
-const BASE_URL = "secret.rizqn.my.id";
+const BASE_URL = "http://secret.rizqn.my.id:3000";
 
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
