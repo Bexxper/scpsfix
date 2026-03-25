@@ -6,11 +6,11 @@ import fs from 'fs';
 
 const app = express();
 const PORT = 3000;
-const BASE_URL = "http://70.153.137.6:3000";
 
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
+// ================= MIDDLEWARE =================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
@@ -18,13 +18,13 @@ app.use(cors());
 const limiter = rateLimit({
   windowMs: 60_000,
   max: 50,
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 app.use(limiter);
 
+// ================= STATIC =================
 app.use(express.static(path.join(process.cwd(), 'public')));
 
+// ================= LOGGER =================
 app.use((req: Request, res: Response, next: NextFunction) => {
   const clientIp =
     (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
@@ -35,10 +35,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// ================= ROOT =================
 app.get('/', (_req: Request, res: Response) => {
   res.send('Login Server Running');
 });
 
+// ================= DASHBOARD =================
 app.all('/player/login/dashboard', async (req: Request, res: Response) => {
   const body = req.body;
   let clientData = '';
@@ -58,136 +60,110 @@ app.all('/player/login/dashboard', async (req: Request, res: Response) => {
   res.send(htmlContent);
 });
 
+// ================= LOGIN VALIDATE =================
 app.all('/player/growid/login/validate', async (req: Request, res: Response) => {
   try {
-    let growId = '';
-    let password = '';
-    let _token = '';
-    let email = '';
+    const body = req.body;
 
-    if (typeof req.body === 'object' && req.body !== null) {
-      const body = req.body as Record<string, string>;
+    let growId = body.growId || body.growid || '';
+    let password = body.password || '';
+    let _token = body._token || body.token || '';
 
-      if (body.growId || body.password) {
-        growId = body.growId || '';
-        password = body.password || '';
-        _token = body._token || '';
-        email = body.email || '';
-      } else if (Object.keys(body).length === 1) {
-        const rawPayload = Object.keys(body)[0];
-        const params = new URLSearchParams(rawPayload);
+    // fallback parsing (Windows raw payload)
+    if (!growId && Object.keys(body).length === 1) {
+      const raw = Object.keys(body)[0];
+      const params = new URLSearchParams(raw);
 
-        growId = params.get('growId') || '';
-        password = params.get('password') || '';
-        _token = params.get('_token') || '';
-        email = params.get('email') || '';
-      }
+      growId = params.get('growId') || '';
+      password = params.get('password') || '';
+      _token = params.get('_token') || '';
     }
 
-    if (!_token || _token === 'undefined') {
-      _token = '';
-    }
+    // generate token ALWAYS
+    const rawToken = `_token=${_token}&growId=${growId}&password=${password}`;
+    const token = Buffer.from(rawToken).toString('base64');
 
+    // ================= REGISTER MODE =================
     if (!growId && !password) {
-      const raw = `_token=${_token}&growId=&password=`;
-      const token = Buffer.from(raw).toString('base64');
-
-      res.setHeader('Content-Type', 'application/json');
-      return res.send(JSON.stringify({
+      return res.json({
         status: 'success',
         message: 'Register Mode',
         token,
-        url: `${BASE_URL}/player/growid/checktoken`,
-        server: BASE_URL,
+        url: '', // penting: kosong untuk Windows
         accountType: 'growtopia',
-      }));
+      });
     }
 
-    if (!growId || !password) {
-      res.setHeader('Content-Type', 'application/json');
-      return res.send(JSON.stringify({
-        status: 'error',
-        message: 'growId and password required',
-      }));
-    }
-
-    let raw = `_token=${_token}&growId=${growId}&password=${password}`;
-    if (email) raw += `&email=${email}`;
-
-    const token = Buffer.from(raw).toString('base64');
-
-    res.setHeader('Content-Type', 'application/json');
-    return res.send(JSON.stringify({
+    // ================= LOGIN VALID =================
+    return res.json({
       status: 'success',
       message: 'Account Validated.',
       token,
-      url: `${BASE_URL}/player/growid/checktoken`,
-      server: BASE_URL,
+      url: '', // kosongkan untuk hindari flow checktoken Windows
       accountType: 'growtopia',
-    }));
+    });
 
   } catch (error) {
     console.log(`[ERROR]: ${error}`);
-    return res.status(500).json({
+    res.status(500).json({
       status: 'error',
       message: 'Internal Server Error',
     });
   }
 });
 
-app.all('/player/growid/checktoken', async (_req: Request, res: Response) => {
-  return res.redirect(307, `${BASE_URL}/player/growid/validate/checktoken`);
+// ================= CHECKTOKEN =================
+// hanya dipakai iOS, Windows tidak butuh
+app.all('/player/growid/checktoken', async (req: Request, res: Response) => {
+  return res.redirect(307, '/player/growid/validate/checktoken');
 });
 
 app.all('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
   try {
-    let refreshToken = '';
+    let refreshToken = req.body.refreshToken;
 
-    if (typeof req.body === 'object' && req.body !== null) {
-      const body = req.body as Record<string, string>;
-
-      if (body.refreshToken) {
-        refreshToken = body.refreshToken;
-      } else if (Object.keys(body).length === 1) {
-        const rawPayload = Object.keys(body)[0];
-        const params = new URLSearchParams(rawPayload);
-        refreshToken = params.get('refreshToken') || '';
-      }
+    // fallback parsing
+    if (!refreshToken && Object.keys(req.body).length === 1) {
+      const raw = Object.keys(req.body)[0];
+      const params = new URLSearchParams(raw);
+      refreshToken = params.get('refreshToken') || '';
     }
 
     if (!refreshToken) {
-      res.setHeader('Content-Type', 'application/json');
-      return res.send(JSON.stringify({
-        status: 'error',
-        message: 'Missing refreshToken',
-      }));
+      // fallback supaya Windows gak error
+      return res.json({
+        status: 'success',
+        message: 'Bypassed',
+        token: '',
+        url: '',
+        accountType: 'growtopia',
+      });
     }
 
     const decoded = Buffer.from(refreshToken, 'base64').toString('utf-8');
     const token = Buffer.from(decoded).toString('base64');
 
-    res.setHeader('Content-Type', 'application/json');
-    return res.send(JSON.stringify({
+    return res.json({
       status: 'success',
       message: 'Account Validated.',
       token,
       url: '',
-      server: BASE_URL,
       accountType: 'growtopia',
       accountAge: 2,
-    }));
+    });
 
   } catch (error) {
     console.log(`[ERROR]: ${error}`);
-    return res.json({
+    res.json({
       status: 'error',
       message: 'Internal Server Error',
     });
   }
 });
 
+// ================= START =================
 app.listen(PORT, () => {
-  console.log(`[SERVER] Running on ${BASE_URL}`);
+  console.log(`[SERVER] Running on http://localhost:${PORT}`);
 });
 
 export default app;
