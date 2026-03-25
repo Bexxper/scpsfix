@@ -6,6 +6,7 @@ import fs from 'fs';
 
 const app = express();
 const PORT = 3000;
+const BASE_URL = "secret.rizqn.my.id";
 
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
@@ -91,20 +92,23 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
       const raw = `_token=${_token}&growId=&password=`;
       const token = Buffer.from(raw).toString('base64');
 
-      return res.json({
+      res.setHeader('Content-Type', 'application/json');
+      return res.send(JSON.stringify({
         status: 'success',
         message: 'Register Mode',
         token,
-        url: '/player/growid/checktoken',
+        url: `${BASE_URL}/player/growid/checktoken`,
+        server: BASE_URL,
         accountType: 'growtopia',
-      });
+      }));
     }
 
     if (!growId || !password) {
-      return res.json({
+      res.setHeader('Content-Type', 'application/json');
+      return res.send(JSON.stringify({
         status: 'error',
         message: 'growId and password required',
-      });
+      }));
     }
 
     let raw = `_token=${_token}&growId=${growId}&password=${password}`;
@@ -112,13 +116,15 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
 
     const token = Buffer.from(raw).toString('base64');
 
-    return res.json({
+    res.setHeader('Content-Type', 'application/json');
+    return res.send(JSON.stringify({
       status: 'success',
       message: 'Account Validated.',
       token,
-      url: '/player/growid/checktoken',
+      url: `${BASE_URL}/player/growid/checktoken`,
+      server: BASE_URL,
       accountType: 'growtopia',
-    });
+    }));
 
   } catch (error) {
     console.log(`[ERROR]: ${error}`);
@@ -130,7 +136,7 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
 });
 
 app.all('/player/growid/checktoken', async (_req: Request, res: Response) => {
-  return res.redirect(307, '/player/growid/validate/checktoken');
+  return res.redirect(307, `${BASE_URL}/player/growid/validate/checktoken`);
 });
 
 app.all('/player/growid/validate/checktoken', async (req: Request, res: Response) => {
@@ -150,23 +156,26 @@ app.all('/player/growid/validate/checktoken', async (req: Request, res: Response
     }
 
     if (!refreshToken) {
-      return res.json({
+      res.setHeader('Content-Type', 'application/json');
+      return res.send(JSON.stringify({
         status: 'error',
         message: 'Missing refreshToken',
-      });
+      }));
     }
 
     const decoded = Buffer.from(refreshToken, 'base64').toString('utf-8');
     const token = Buffer.from(decoded).toString('base64');
 
-    return res.json({
+    res.setHeader('Content-Type', 'application/json');
+    return res.send(JSON.stringify({
       status: 'success',
       message: 'Account Validated.',
       token,
       url: '',
+      server: BASE_URL,
       accountType: 'growtopia',
       accountAge: 2,
-    });
+    }));
 
   } catch (error) {
     console.log(`[ERROR]: ${error}`);
@@ -178,7 +187,7 @@ app.all('/player/growid/validate/checktoken', async (req: Request, res: Response
 });
 
 app.listen(PORT, () => {
-  console.log(`[SERVER] Running on http://localhost:${PORT}`);
+  console.log(`[SERVER] Running on ${BASE_URL}`);
 });
 
 export default app;
