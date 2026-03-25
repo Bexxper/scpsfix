@@ -95,7 +95,7 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
         status: 'success',
         message: 'Register Mode',
         token,
-        url: '',
+        url: '/player/growid/checktoken',
         accountType: 'growtopia',
       });
     }
@@ -116,7 +116,7 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
       status: 'success',
       message: 'Account Validated.',
       token,
-      url: '',
+      url: '/player/growid/checktoken',
       accountType: 'growtopia',
     });
 
@@ -128,6 +128,7 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
     });
   }
 });
+
 app.all('/player/growid/checktoken', async (_req: Request, res: Response) => {
   return res.redirect(307, '/player/growid/validate/checktoken');
 });
