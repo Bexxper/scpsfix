@@ -3,197 +3,203 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Secret PS Login Page</title>
+<title>Next PS — Login</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
 <style>
+:root {
+    --gold: #f0c040;
+    --gold-light: #ffe07a;
+    --gold-dim: rgba(240, 192, 64, 0.15);
+    --gold-glow: rgba(240, 192, 64, 0.35);
+    --crystal: #6ec6ff;
+    --crystal-glow: rgba(110, 198, 255, 0.3);
+    --bg-card: rgba(12, 8, 24, 0.82);
+    --bg-input: rgba(20, 14, 40, 0.75);
+    --border: rgba(240, 192, 64, 0.18);
+    --text: #f0e8d8;
+    --text-dim: #9a8e78;
+}
+
 * {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
     -webkit-tap-highlight-color: transparent;
 }
 
+html, body {
+    height: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
 body {
-    margin: 0;
     min-height: 100vh;
-
-    /* 🔥 SUPPORT JPG / GIF */
-    background: url("https://raw.githubusercontent.com/Bexxper/backend/main/jiraiyavspain.gif") no-repeat center center;
+    background: url("https://raw.githubusercontent.com/Ninepiaths1/backend/refs/heads/main/backgroundnextps.png") no-repeat center center;
     background-size: cover;
-
+    background-color: #0a0614;
     display: flex;
     justify-content: center;
-    align-items: center;
-
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    align-items: flex-start;
+    padding-top: 40px;
+    font-family: 'Quicksand', sans-serif;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
-/* 🔥 VIGNETTE HALUS */
 .overlay {
     position: fixed;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-
-    background: radial-gradient(
-        circle at center,
-        rgba(0,0,0,0.2) 0%,
-        rgba(0,0,0,0.55) 60%,
-        rgba(0,0,0,0.85) 100%
-    );
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(240, 180, 50, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(6, 4, 16, 0.25) 0%, rgba(4, 2, 12, 0.7) 55%, rgba(2, 1, 8, 0.92) 100%);
+    z-index: 1;
 }
 
-/* 🔥 ANIMASI */
-@keyframes fadeInSmooth {
-    from {
+.fireflies {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.firefly {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0;
+    animation: drift ease-in-out infinite;
+}
+
+.firefly.gold {
+    background: var(--gold);
+    box-shadow: 0 0 6px var(--gold-glow), 0 0 12px var(--gold-glow);
+}
+
+.firefly.crystal {
+    background: var(--crystal);
+    box-shadow: 0 0 6px var(--crystal-glow), 0 0 12px var(--crystal-glow);
+}
+
+@keyframes drift {
+    0% {
         opacity: 0;
-        transform: translateY(12px);
+        transform: translate(0, 0) scale(0.5);
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    15% {
+        opacity: 0.9;
+    }
+    50% {
+        opacity: 0.4;
+        transform: translate(40px, -60px) scale(1);
+    }
+    85% {
+        opacity: 0.8;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-20px, -120px) scale(0.3);
     }
 }
 
-/* 🔥 LOGIN BOX */
 .login-container {
     position: relative;
     z-index: 2;
-
-    background: rgba(20,20,20,0.92);
-    padding: 28px 20px;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 360px;
-
+    background: var(--bg-card);
+    backdrop-filter: blur(24px) saturate(1.3);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 34px 26px 26px;
+    width: 92%;
+    max-width: 370px;
     text-align: center;
-
-    box-shadow: 
-        0 0 15px rgba(0,0,0,0.7),
-        0 0 10px rgba(241,196,15,0.25);
-
-    animation: fadeInSmooth 0.5s ease;
-
-    max-height: 90vh;
-    overflow: hidden;
 }
 
-/* 🔥 TITLE */
-.login-title {
-    font-size: 22px;
-    color: #f1c40f;
-    margin-bottom: 18px;
-    font-weight: 600;
-}
-
-/* 🔥 INPUT */
 .form-control {
     width: 100%;
-    padding: 10px;
-    margin-bottom: 12px;
-    border-radius: 8px;
-    border: none;
-    font-size: 13px;
-    background: #2c2c2c;
-    color: #fff;
-    outline: none;
-    transition: 0.2s;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 14px;
+    font-family: 'Quicksand', sans-serif;
+    background: var(--bg-input);
+    color: var(--text);
 }
 
-.form-control::placeholder {
-    color: #bbb;
-}
-
-.form-control:focus {
-    border: 1px solid #f1c40f;
-    box-shadow: 0 0 6px rgba(241,196,15,0.4);
-}
-
-/* 🔥 LOGIN BUTTON */
 .btn-login {
     width: 100%;
-    padding: 10px;
-    background: #f1c40f;
+    padding: 12px;
+    background: linear-gradient(135deg, #c89520, #f0c040, #ffe07a);
     border: none;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: bold;
-    color: #121212;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    color: #1a0e00;
     cursor: pointer;
-
-    transition: all 0.2s ease;
 }
 
-.btn-login:active {
-    transform: scale(0.95);
-}
-
-/* 🔥 REGISTER BUTTON */
 .btn-register {
     width: 100%;
-    padding: 9px;
-    margin-top: 8px;
+    padding: 11px;
+    margin-top: 10px;
     background: transparent;
-    border: 1px solid #f1c40f;
-    border-radius: 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
     font-size: 12px;
-    color: #f1c40f;
+    font-family: 'Quicksand', sans-serif;
+    color: var(--gold-light);
     cursor: pointer;
-
-    transition: all 0.2s ease;
 }
 
-.btn-register:active {
-    transform: scale(0.95);
-}
-
-/* 🔥 FOOTER */
-.footer-text {
-    margin-top: 12px;
-    font-size: 10px;
-    color: #aaa;
-}
-
-/* 📱 ANDROID FIX (SUPER KECIL & PAS) */
-@media (max-width: 480px) {
-
-    body {
-        align-items: flex-start;
-        padding-top: 40px;
-    }
-
-    .login-container {
-        transform: scale(0.9);
-    }
-}
 </style>
 </head>
 
 <body>
 
 <div class="overlay"></div>
+<div class="fireflies" id="fireflies"></div>
 
 <div class="login-container">
-    <div class="login-title">Secret PS</div>
+
+    <h2 style="color:white;margin-bottom:15px;">Next PS Login</h2>
 
     <form method="POST" action="/player/growid/login/validate">
-        <input type="text" name="growId" class="form-control"
-            placeholder="Your GrowID" required />
-        <input type="password" name="password" class="form-control"
-            placeholder="Password" required />
-        <input type="submit" class="btn-login" value="LOGIN" />
+        <input type="text" name="growId" class="form-control" placeholder="GrowID" required />
+        <input type="password" name="password" class="form-control" placeholder="Password" required />
+        <input type="submit" class="btn-login" value="Login" />
     </form>
 
     <form method="POST" action="/player/growid/login/validate">
         <input type="hidden" name="growId" value="" />
         <input type="hidden" name="password" value="" />
-        <input type="submit" class="btn-register"
-            value="Register New Account" />
+        <input type="submit" class="btn-register" value="Create New Account" />
     </form>
 
-    <div class="footer-text">
-        © 2026 Secret PS — Login Page - Bexxper & Ninepiaths
-    </div>
 </div>
+
+<script>
+(function() {
+    var c = document.getElementById('fireflies');
+    var colors = ['gold', 'gold', 'gold', 'crystal'];
+    for (var i = 0; i < 25; i++) {
+        var f = document.createElement('div');
+        f.className = 'firefly ' + colors[Math.floor(Math.random() * colors.length)];
+        f.style.left = Math.random() * 100 + '%';
+        f.style.top = (30 + Math.random() * 70) + '%';
+        f.style.animationDuration = (5 + Math.random() * 8) + 's';
+        f.style.animationDelay = (Math.random() * 6) + 's';
+        var size = (2 + Math.random() * 3) + 'px';
+        f.style.width = size;
+        f.style.height = size;
+        c.appendChild(f);
+    }
+})();
+</script>
 
 </body>
 </html>
