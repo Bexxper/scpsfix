@@ -7,162 +7,164 @@ import fs from 'fs';
 const app = express();
 const PORT = 3000;
 
-// ===== CONFIG =====
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 const limiter = rateLimit({
   windowMs: 60_000,
-  max: 50,
+  max: 150,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
 app.use(express.static(path.join(process.cwd(), 'public')));
 
-// ===== DATABASE JSON =====
-const DB_PATH = path.join(process.cwd(), 'database.json');
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const clientIp =
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    req.socket.remoteAddress ||
+    'unknown';
 
-// auto create file kalau belum ada
-if (!fs.existsSync(DB_PATH)) {
-  fs.writeFileSync(DB_PATH, '[]');
-}
-
-function loadDB(): any[] {
-  try {
-    const data = fs.readFileSync(DB_PATH, 'utf-8');
-    return JSON.parse(data || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveDB(data: any[]) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
-}
-
-// ===== LOGGING =====
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  const ip =
-    (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
-    req.socket.remoteAddress;
-
-  console.log(`[REQ] ${req.method} ${req.path} → ${ip}`);
+  console.log(`[REQ] ${req.method} ${req.path} → ${clientIp}`);
   next();
 });
 
-// ===== DASHBOARD =====
-app.all('/player/login/dashboard', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
+  res.send('Login Server Running');
+});
+
+app.all('/player/login/dashboard', async (req: Request, res: Response) => {
+  const body = req.body;
   let clientData = '';
 
-  if (req.body && Object.keys(req.body).length > 0) {
-    clientData = Object.keys(req.body)[0];
+  if (body && typeof body === 'object' && Object.keys(body).length > 0) {
+    clientData = Object.keys(body)[0];
   }
 
-  const encoded = Buffer.from(clientData).toString('base64');
+  const encodedClientData = Buffer.from(clientData).toString('base64');
 
-  const template = fs.readFileSync(
-    path.join(process.cwd(), 'template', 'dashboard.html'),
-    'utf-8'
-  );
+  const templatePath = path.join(process.cwd(), 'template', 'dashboard.html');
+  const templateContent = fs.readFileSync(templatePath, 'utf-8');
 
-  res.send(template.replace('{{ data }}', encoded));
+  const htmlContent = templateContent.replace('{{ data }}', encodedClientData);
+
+  res.setHeader('Content-Type', 'text/html');
+  res.send(htmlContent);
 });
 
-// ===== LOGIN / REGISTER =====
-app.all('/player/growid/login/validate', (req: Request, res: Response) => {
+app.all('/player/growid/login/validate', async (req: Request, res: Response) => {
   try {
-    const { _token, growId, password, email } = req.body;
+    let { _token, growId, password, email } = req.body;
 
-    let db = loadDB();
+    if ((!growId || !password) && Object.keys(req.body).length === 1) {
+      const raw = Object.keys(req.body)[0];
+      const params = new URLSearchParams(raw);
 
-    // ===== REGISTER =====
-    if (email) {
-      const exists = db.find((u) => u.growId === growId);
-
-      if (exists) {
-        return res.json({
-          status: 'error',
-          message: 'GrowID already exists',
-        });
-      }
-
-      db.push({
-        growId,
-        password,
-        email,
-      });
-
-      saveDB(db);
-      console.log(`[REGISTER] ${growId}`);
-    } else {
-      // ===== LOGIN =====
-      const user = db.find(
-        (u) => u.growId === growId && u.password === password
-      );
-
-      if (!user) {
-        return res.json({
-          status: 'error',
-          message: 'Invalid credentials',
-        });
-      }
-
-      console.log(`[LOGIN] ${growId}`);
+      _token = params.get('_token') || '';
+      growId = params.get('growId') || '';
+      password = params.get('password') || '';
+      email = params.get('email') || undefined;
     }
 
-    // ===== TOKEN (SINKRON C++) =====
-    const raw = `_token=${_token}&growId=${growId}&password=${password}`;
-    const token = Buffer.from(raw).toString('base64');
+    if (!growId && !password) {
+      const raw = `_token=${_token || ''}&growId=&password=`;
+      const token = Buffer.from(raw).toString('base64');
 
-    res.json({
-      status: 'success',
-      message: 'Account Validated',
-      token,
-      accountType: 'growtopia',
-    });
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({ status: 'error' });
-  }
-});
+      return res.json({
+        status: 'success',
+        message: 'Register Mode',
+        token,
+        url: '',
+        accountType: 'growtopia',
+      });
+    }
 
-// ===== CHECK TOKEN =====
-app.all('/player/growid/checktoken', (_req, res) => {
-  return res.redirect(307, '/player/growid/validate/checktoken');
-});
-
-app.all('/player/growid/validate/checktoken', (req, res) => {
-  try {
-    const { refreshToken, clientData } = req.body;
-
-    if (!refreshToken || !clientData) {
+    if (!growId || !password) {
       return res.json({
         status: 'error',
-        message: 'Missing token',
+        message: 'growId and password required',
       });
     }
 
-    let decoded = Buffer.from(refreshToken, 'base64').toString();
+    let raw = `_token=${_token}&growId=${growId}&password=${password}`;
+    if (email) raw += `&email=${email}`;
 
-    const newToken = Buffer.from(
-      decoded.replace(
-        /(_token=)[^&]*/,
-        `$1${Buffer.from(clientData).toString('base64')}`
-      )
-    ).toString('base64');
+    const token = Buffer.from(raw).toString('base64');
 
-    res.json({
+    return res.json({
       status: 'success',
-      token: newToken,
+      message: 'Account Validated.',
+      token,
+      url: '',
       accountType: 'growtopia',
     });
-  } catch {
-    res.json({ status: 'error' });
+  } catch (error) {
+    console.log(`[ERROR]: ${error}`);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal Server Error',
+    });
+  }
+});
+
+app.all('/player/growid/checktoken', async (req: Request, res: Response) => {
+  try {
+    let refreshToken: string | undefined;
+
+    if (req.body && typeof req.body === 'object') {
+      const formData = req.body as Record<string, string>;
+
+      if ('refreshToken' in formData) {
+        refreshToken = formData.refreshToken;
+      } else if (Object.keys(formData).length === 1) {
+        const rawPayload = Object.keys(formData)[0];
+        const params = new URLSearchParams(rawPayload);
+        refreshToken = params.get('refreshToken') || undefined;
+      }
+    }
+
+    if (!refreshToken && typeof req.query.refreshToken === 'string') {
+      refreshToken = req.query.refreshToken;
+    }
+
+    if (!refreshToken && typeof req.headers['refreshtoken'] === 'string') {
+      refreshToken = req.headers['refreshtoken'];
+    }
+
+    if (!refreshToken) {
+      return res.json({
+        status: 'error',
+        message: 'Missing refreshToken',
+      });
+    }
+
+    const decoded = Buffer.from(refreshToken, 'base64').toString('utf-8');
+    const token = Buffer.from(decoded).toString('base64');
+
+    return res.json({
+      status: 'success',
+      message: 'Account Validated.',
+      token,
+      url: '',
+      accountType: 'growtopia',
+      accountAge: 2,
+    });
+  } catch (error) {
+    console.log(`[ERROR]: ${error}`);
+    return res.json({
+      status: 'error',
+      message: 'Internal Server Error',
+    });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`[SERVER] Running on http://localhost:${PORT}`);
 });
+
+export default app;
