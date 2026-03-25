@@ -68,27 +68,32 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
   try {
     let { _token, growId, password, email } = req.body;
 
-    // ===== fallback parsing (Windows client) =====
+    // fallback parsing (Windows)
     if ((!growId || !password) && Object.keys(req.body).length === 1) {
-      const raw = Object.keys(req.body)[0];
-      const params = new URLSearchParams(raw);
+      const rawBody = Object.keys(req.body)[0];
+      const params = new URLSearchParams(rawBody);
 
       growId = params.get('growId') || '';
       password = params.get('password') || '';
       _token = params.get('_token') || '';
     }
 
-    // ===== DETECT REGISTER =====
     const isRegister = !growId && !password;
+
+    // 🔥 FIX: token wajib ada
+    const safeToken =
+      _token && _token !== ''
+        ? _token
+        : Math.random().toString(36).substring(2, 12);
 
     let raw: string;
 
     if (isRegister) {
       const guestId = `guest_${Date.now()}`;
-      raw = `_token=guest&growId=${guestId}&password=guest`;
-      console.log('[REGISTER BYPASS]');
+      raw = `_token=${safeToken}&growId=${guestId}&password=guest`;
+      console.log('[REGISTER FIXED]');
     } else {
-      raw = `_token=${_token || ''}&growId=${growId}&password=${password}`;
+      raw = `_token=${safeToken}&growId=${growId}&password=${password}`;
       if (email) raw += `&email=${email}`;
     }
 
@@ -98,7 +103,7 @@ app.all('/player/growid/login/validate', async (req: Request, res: Response) => 
       status: 'success',
       message: isRegister ? 'Register Mode' : 'Account Validated.',
       token,
-      url: '', // penting untuk Windows
+      url: '',
       accountType: 'growtopia',
     });
 
